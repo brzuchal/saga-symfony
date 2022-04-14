@@ -12,6 +12,8 @@
         <exclude name="SlevomatCodingStandard.Namespaces.ReferenceUsedNamesOnly.ReferenceViaFullyQualifiedName"/>
         <exclude name="SlevomatCodingStandard.Whitespaces.DuplicateSpaces"/>
     </rule>
-    <file>src/</file>
+    <file>DependencyInjection/</file>
+    <file>Tests/</file>
+    <file>SagaBundle.php</file>
     <exclude-pattern>src/Mapping/SagaMethodType.php</exclude-pattern>
 </ruleset>

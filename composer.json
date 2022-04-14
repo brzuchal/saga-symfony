@@ -23,10 +23,15 @@
   },
   "autoload": {
     "psr-4": {
-      "Brzuchal\\SagaBundle\\": "/"
+      "Brzuchal\\SagaBundle\\": "."
     },
     "exclude-from-classmap": [
       "**/Tests/"
     ]
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Brzuchal\\SagaBundle\\Tests\\": "Tests/"
+    }
   }
 }

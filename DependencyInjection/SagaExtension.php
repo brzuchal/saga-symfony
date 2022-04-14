@@ -4,9 +4,13 @@ namespace Brzuchal\SagaBundle\DependencyInjection;
 
 use Brzuchal\Saga\Mapping\AttributeMappingDriver;
 use Brzuchal\Saga\Mapping\SagaMetadataFactory;
+use Brzuchal\Saga\Mapping\SagaMethodMetadata;
+use Brzuchal\Saga\SagaManager;
+use Brzuchal\Saga\SagaManagerFactory;
 use Brzuchal\Saga\SagaRepositoryFactory;
 use Brzuchal\Saga\Store\DoctrineSagaStore;
 use Brzuchal\Saga\Repository\MappedRepositoryFactory;
+use Roave\BetterReflection\Reflection\ReflectionClass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
@@ -38,12 +42,22 @@ final class SagaExtension extends Extension
             $storeDriverService->addTag($this->prefixName('store'), ['name' => $storeName]);
         }
 
+        $managerFactoryId = $this->prefixName('manager_factory');
         $locator = [];
         $metadata = [];
         foreach ($config['mappings'] as $class => $mapping) {
             $mapping['type'] ??= 'attribute';
             $locator[$class] = new Reference($this->prefixName(sprintf('stores.%s', $mapping['store'])));
             $metadata[$mapping['type']] = true;
+
+            $classes = $this->extractMessageClasses($class);
+            $id = $this->prefixName(sprintf('manager.%s', $class));
+            $definition = $container->register($id, SagaManager::class)
+                ->setFactory([new Reference($managerFactoryId), 'managerForClass'])
+                ->setArgument(0, $class);
+            foreach ($classes as $messageClass) {
+                $definition->addTag('messenger.message_handler', ['handles' => $messageClass]);
+            }
         }
 
         $metadataDriverTag = $this->prefixName('metadata_driver');
@@ -63,6 +77,8 @@ final class SagaExtension extends Extension
             ->setArgument(1, new Reference($metadataFactoryId))
             ->setPublic(true);
         $container->setAlias(SagaRepositoryFactory::class, $repositoryFactoryId);
+        $container->register($managerFactoryId, SagaManagerFactory::class)
+            ->setArgument(0, new Reference(SagaRepositoryFactory::class));
     }
 
     protected function createDoctrineStoreService(array $options, Definition $service): Definition
@@ -81,5 +97,13 @@ final class SagaExtension extends Extension
     private function prefixName(string $name): string
     {
         return \sprintf('%s.%s', $this->getAlias(), $name);
+    }
+
+    private function extractMessageClasses(string $class): array
+    {
+        return \array_merge(...\array_map(
+            static fn($method) => $method->getTypes(),
+            (new AttributeMappingDriver())->extractMethods(ReflectionClass::createFromName($class)),
+        ));
     }
 }
