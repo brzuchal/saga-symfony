@@ -14,6 +14,10 @@ test-phpcs: vendor
 	vendor/bin/phpcs --colors
 
 .PHONY:
+cbf: vendor
+	vendor/bin/phpcbf
+
+.PHONY:
 test-psalm: vendor
 	vendor/bin/psalm
 

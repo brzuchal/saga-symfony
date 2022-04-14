@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Brzuchal\SagaBundle\Tests;
 
@@ -16,6 +18,7 @@ final class TestKernel extends Kernel implements CompilerPassInterface
 {
     use MicroKernelTrait;
 
+    /** @inheritdoc */
     public function registerBundles(): iterable
     {
         return [
@@ -35,10 +38,7 @@ final class TestKernel extends Kernel implements CompilerPassInterface
         return \sprintf('%s/var/logs', $this->getProjectDir());
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function configureContainer(ContainerBuilder $container, LoaderInterface $loader)
+    protected function configureContainer(ContainerBuilder $container, LoaderInterface $loader): void
     {
         $container->loadFromExtension('doctrine', [
             'dbal' => [
@@ -61,19 +61,15 @@ final class TestKernel extends Kernel implements CompilerPassInterface
 
         $container->loadFromExtension('brzuchal_saga', [
             'stores' => [
-                'default' => [
-                    'driver' => 'doctrine',
-                ],
+                'default' => ['driver' => 'doctrine'],
             ],
             'mappings' => [
-                AttributedFoo::class => [
-                    'type' => 'attributes',
-                ],
+                AttributedFoo::class => ['type' => 'attributes'],
             ],
         ]);
     }
 
-    public function process(ContainerBuilder $container)
+    public function process(ContainerBuilder $container): void
     {
         // TODO: Implement process() method.
     }

@@ -1,9 +1,11 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Brzuchal\SagaBundle\Tests\DependencyInjection;
 
-use Brzuchal\Saga\Tests\Fixtures\Foo;
 use Brzuchal\SagaBundle\DependencyInjection\Configuration;
+use Brzuchal\SagaBundle\Tests\Fixtures\AttributedFoo;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Config\Definition\Processor;
 
@@ -26,7 +28,7 @@ class ConfigurationTest extends TestCase
                     'connection' => 'default_connection',
                 ],
                 'mappings' => [
-                    Foo::class => null,
+                    AttributedFoo::class => null,
                 ],
             ],
         ]);
@@ -57,7 +59,7 @@ class ConfigurationTest extends TestCase
                     ],
                 ],
                 'mappings' => [
-                    Foo::class => null,
+                    AttributedFoo::class => null,
                 ],
             ],
         ]);
@@ -77,16 +79,16 @@ class ConfigurationTest extends TestCase
             self::CONFIG_ROOT => [
                 'driver' => 'doctrine',
                 'mappings' => [
-                    Foo::class => null,
+                    AttributedFoo::class => null,
                 ],
             ],
         ]);
         $this->assertArrayHasKey('mappings', $config);
         $this->assertIsArray($config['mappings']);
-        $this->assertArrayHasKey(Foo::class, $config['mappings']);
-        $this->assertIsArray($config['mappings'][Foo::class]);
+        $this->assertArrayHasKey(AttributedFoo::class, $config['mappings']);
+        $this->assertIsArray($config['mappings'][AttributedFoo::class]);
         $this->assertEquals([
-            Foo::class => [
+            AttributedFoo::class => [
                 'type' => 'attribute',
                 'store' => 'default',
                 'options' => [],

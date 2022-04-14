@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace Brzuchal\SagaBundle\DependencyInjection;
 
@@ -6,14 +8,17 @@ use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
 use Symfony\Component\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 
+use function array_key_exists;
+use function is_array;
+
 final class Configuration implements ConfigurationInterface
 {
     public function getConfigTreeBuilder(): TreeBuilder
     {
         $treeBuilder = new TreeBuilder('brzuchal_saga');
 
-        /** @var ArrayNodeDefinition */
         $root = $treeBuilder->getRootNode();
+        \assert($root instanceof ArrayNodeDefinition);
         $this->addStoresSection($root);
         $this->addMappingsSection($root);
 

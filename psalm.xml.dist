@@ -3,11 +3,17 @@
     xmlns="https://getpsalm.org/schema/config"
     xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
 >
+    <plugins>
+        <pluginClass class="Psalm\SymfonyPsalmPlugin\Plugin"/>
+        <pluginClass class="Psalm\PhpUnitPlugin\Plugin"/>
+    </plugins>
     <projectFiles>
         <directory name="DependencyInjection" />
+        <directory name="Tests" />
+        <file name="SagaBundle.php" />
         <ignoreFiles>
-            <directory name="Tests" />
             <directory name="vendor" />
+            <file name="DependencyInjection/Configuration.php" />
         </ignoreFiles>
     </projectFiles>
 
