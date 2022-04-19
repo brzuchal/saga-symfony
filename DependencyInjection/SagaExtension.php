@@ -5,20 +5,16 @@ declare(strict_types=1);
 namespace Brzuchal\SagaBundle\DependencyInjection;
 
 use Brzuchal\Saga\Mapping\AttributeMappingDriver;
-use Brzuchal\Saga\Mapping\SagaMetadataFactory;
-use Brzuchal\Saga\Repository\MappedRepositoryFactory;
+use Brzuchal\Saga\Mapping\SagaFactory;
 use Brzuchal\Saga\SagaManager;
-use Brzuchal\Saga\SagaManagerFactory;
-use Brzuchal\Saga\SagaRepositoryFactory;
 use Brzuchal\Saga\Store\DoctrineSagaStore;
 use Roave\BetterReflection\Reflection\ReflectionClass;
 use Symfony\Component\Config\FileLocator;
-use Symfony\Component\DependencyInjection\Argument\IteratorArgument;
+use Symfony\Component\DependencyInjection\ChildDefinition;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Extension\Extension;
-use Symfony\Component\DependencyInjection\Loader\Configurator\AbstractConfigurator;
 use Symfony\Component\DependencyInjection\Loader\PhpFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 
@@ -36,7 +32,7 @@ final class SagaExtension extends Extension
         $loader->load('saga.php');
 
         foreach ($config['stores'] as $storeName => $storeConfig) {
-            $repositoryFactoryId = $this->prefixName(\sprintf('stores.%s', $storeName));
+            $repositoryFactoryId = \sprintf('brzuchal_saga.%s_store', $storeName);
             $storeConfig['options'] ??= [];
             ['driver' => $driverName, 'options' => $driverOptions] = $storeConfig;
             $storeDriverService = match ($driverName) {
@@ -49,40 +45,50 @@ final class SagaExtension extends Extension
                     $driverName,
                 )),
             };
-            $storeDriverService->addTag($this->prefixName('store'), ['name' => $storeName]);
         }
 
-        $managerFactoryId = $this->prefixName('manager_factory');
-        $locator = [];
-        $metadata = [];
         foreach ($config['mappings'] as $class => $mapping) {
             $mapping['type'] ??= 'attribute';
-            $locator[$class] = new Reference($this->prefixName(sprintf('stores.%s', $mapping['store'])));
-            $metadata[$mapping['type']] = true;
+            $container->getDefinition(\sprintf('brzuchal_saga.%s_store', $mapping['store']))
+                ->addTag('brzuchal_saga.store', ['class' => $class]);
 
             $classes = $this->extractMessageClasses($class);
-            $id = $this->prefixName(sprintf('manager.%s', $class));
-            $definition = $container->register($id, SagaManager::class)
-                ->setFactory([new Reference($managerFactoryId), 'managerForClass'])
+            if (empty($classes)) {
+                continue;
+            }
+
+            $definition = $container->register(sprintf('brzuchal_saga.manager.%s', $class), SagaManager::class)
+                ->setFactory([new Reference('brzuchal_saga.manager_factory'), 'managerForClass'])
                 ->setArgument(0, $class);
             foreach ($classes as $messageClass) {
                 $definition->addTag('messenger.message_handler', ['handles' => $messageClass]);
             }
         }
 
-        $storeLocator = new IteratorArgument(AbstractConfigurator::processValue(
-            $locator,
-            true,
-        ));
-        $container->getDefinition('brzuchal_saga.repository_factory')
-            ->replaceArgument(0, $storeLocator);
+        $container->registerAttributeForAutoconfiguration(
+            SagaFactory::class,
+            static function (ChildDefinition $definition, SagaFactory $attr, \Reflector $reflector): void {
+                $class = $attr->class;
+                $method = null;
+                if (empty($class) && $reflector instanceof \ReflectionMethod) {
+                    $returnType = $reflector->getReturnType();
+                    // TODO: remove temporary simplification
+                    \assert($returnType instanceof \ReflectionNamedType);
+                    $class = $returnType->getName();
+                    $method = $reflector->getName();
+                }
 
-        $metadataDriverTag = $this->prefixName('metadata_driver');
-        foreach ($metadata as $type => $enabled) {
-            $metadataDriverId = $this->prefixName(sprintf('%s_metadata', $type));
-            $container->register($metadataDriverId, AttributeMappingDriver::class)
-                ->addTag($metadataDriverTag);
-        }
+                if (empty($class) && $reflector instanceof \ReflectionClass && $reflector->hasMethod('__invoke')) {
+                    $returnType = $reflector->getMethod('__invoke')->getReturnType();
+                    // TODO: remove temporary simplification
+                    \assert($returnType instanceof \ReflectionNamedType);
+                    $class = $returnType->getName();
+                    $method = '__invoke';
+                }
+
+                $definition->addTag('brzuchal_saga.factory', ['class' => $class, 'method' => $method]);
+            },
+        );
     }
 
     /**
@@ -93,17 +99,13 @@ final class SagaExtension extends Extension
         $options['connection'] ??= 'default';
 
         return $service->setClass(DoctrineSagaStore::class)
-            ->setArgument(0, new Reference(sprintf('doctrine.dbal.%s_connection', $options['connection'])));
+            ->setArgument(0, new Reference(sprintf('doctrine.dbal.%s_connection', $options['connection'])))
+            ->setArgument(1, new Reference('serializer'));
     }
 
     public function getAlias(): string
     {
         return 'brzuchal_saga';
-    }
-
-    private function prefixName(string $name): string
-    {
-        return \sprintf('%s.%s', $this->getAlias(), $name);
     }
 
     /**

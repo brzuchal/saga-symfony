@@ -56,7 +56,6 @@ final class TestKernel extends Kernel implements CompilerPassInterface
             'secret' => 'nope',
             'test' => true,
             'messenger' => null,
-            'serializer' => ['enabled' => false],
         ]);
 
         $container->loadFromExtension('brzuchal_saga', [
